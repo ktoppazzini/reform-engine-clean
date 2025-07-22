@@ -1,171 +1,153 @@
 'use client';
+
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+import axios from 'axios';
 
 export default function ReformFormFR() {
-  const [form, setForm] = useState({
-    organization: '',
-    country: '',
-    size: '',
-    tier: '',
-    timeFrame: '',
-    outcome: '',
-    savings: '',
-    goals: '',
-  });
+  const [organizationName, setOrganizationName] = useState('');
+  const [country, setCountry] = useState('');
+  const [companySize, setCompanySize] = useState('');
+  const [tier, setTier] = useState('');
+  const [timeFrame, setTimeFrame] = useState('');
+  const [desiredOutcome, setDesiredOutcome] = useState('');
+  const [costSavingsGoal, setCostSavingsGoal] = useState('');
+  const [strategicGoals, setStrategicGoals] = useState('');
 
-  const [options, setOptions] = useState({
-    countries: [],
-    sizes: [],
-    tiers: [],
-    timeFrames: [],
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [countries, setCountries] = useState([]);
+  const [companySizes, setCompanySizes] = useState([]);
+  const [tiers, setTiers] = useState([]);
+  const [timeFrames, setTimeFrames] = useState([]);
 
   useEffect(() => {
-    fetch('/api/options')
-      .then(res => res.json())
-      .then(data => {
-        setOptions({
-          countries: data.countries?.map(c => c.nameFr || c.name) || [],
-          sizes: data.sizes?.map(s => s.nameFr || s.name) || [],
-          tiers: data.tiers?.map(t => t.nameFr || t.name) || [],
-          timeFrames: data.timeframes?.map(tf => tf.nameFr || tf.name) || [],
-        });
-      })
-      .catch(err => {
-        console.error('Erreur chargement champs:', err);
-        setMessage('⚠️ Impossible de charger les options.');
-      });
-  }, []);
+    const fetchData = async () => {
+      const [countriesRes, sizesRes, tiersRes, timesRes] = await Promise.all([
+        axios.get('/api/countries'),
+        axios.get('/api/company-sizes'),
+        axios.get('/api/tiers'),
+        axios.get('/api/time-frames'),
+      ]);
 
-  const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+      setCountries(countriesRes.data);
+      setCompanySizes(sizesRes.data);
+      setTiers(tiersRes.data);
+      setTimeFrames(timesRes.data);
+    };
+
+    fetchData();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage('');
 
-    try {
-      const res = await fetch('/api/generate-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+    await axios.post('/api/generate-pdf', {
+      organizationName,
+      country,
+      companySize,
+      tier,
+      timeFrame,
+      desiredOutcome,
+      costSavingsGoal,
+      strategicGoals,
+      locale: 'fr',
+    });
 
-      const result = await res.json();
-      if (res.ok) {
-        setMessage('✅ Rapport généré avec succès.');
-      } else {
-        setMessage(result.error || '❌ Une erreur est survenue.');
-      }
-    } catch {
-      setMessage('❌ Erreur lors de la soumission.');
-    } finally {
-      setLoading(false);
-    }
+    alert('Demande de rapport envoyée.');
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4">
-      <div className="bg-white shadow-xl rounded-lg p-8 w-full max-w-2xl relative">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Image src="/secure.png" alt="Sovereign Ops" width={32} height={32} />
-            <h1 className="text-lg font-bold text-blue-900">Sovereign Ops™</h1>
-          </div>
-          <Link href="/en/reform" className="text-blue-600 font-semibold hover:underline">EN</Link>
+    <main className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-xl w-full space-y-8 bg-white border border-gray-200 shadow-md rounded-xl p-10">
+        <div className="text-center">
+          <img src="/so-logo.png" alt="Sovereign Ops" className="mx-auto w-20 h-20 mb-4" />
+          <h2 className="text-3xl font-bold text-gray-900">Générateur de Rapport de Réforme</h2>
         </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <input
+            type="text"
+            placeholder="Nom de l'organisation"
+            value={organizationName}
+            onChange={(e) => setOrganizationName(e.target.value)}
+            required
+            className="input-style"
+          />
 
-        {/* Title */}
-        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Générateur de Rapport de Réforme</h2>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} required className="input-style">
+            <option value="">-- Sélectionnez un pays --</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input label="Nom de l’organisation" name="organization" value={form.organization} onChange={handleChange} />
+          <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} required className="input-style">
+            <option value="">-- Taille de l'entreprise --</option>
+            {companySizes.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
 
-          <Select label="Pays" name="country" value={form.country} onChange={handleChange} options={options.countries} />
-          <Select label="Taille de l’entreprise" name="size" value={form.size} onChange={handleChange} options={options.sizes} />
-          <Select label="Niveau" name="tier" value={form.tier} onChange={handleChange} options={options.tiers} />
-          <Select label="Délai" name="timeFrame" value={form.timeFrame} onChange={handleChange} options={options.timeFrames} />
+          <select value={tier} onChange={(e) => setTier(e.target.value)} required className="input-style">
+            <option value="">-- Niveau de réforme --</option>
+            {tiers.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
 
-          <TextArea label="Résultat souhaité" name="outcome" value={form.outcome} onChange={handleChange} />
-          <Input label="Objectif d’économie" name="savings" value={form.savings} onChange={handleChange} />
-          <TextArea label="Objectifs stratégiques" name="goals" value={form.goals} onChange={handleChange} />
+          <select value={timeFrame} onChange={(e) => setTimeFrame(e.target.value)} required className="input-style">
+            <option value="">-- Délai de mise en œuvre --</option>
+            {timeFrames.map((tf) => (
+              <option key={tf} value={tf}>{tf}</option>
+            ))}
+          </select>
+
+          <textarea
+            placeholder="Résultat souhaité"
+            value={desiredOutcome}
+            onChange={(e) => setDesiredOutcome(e.target.value)}
+            required
+            className="input-style"
+          />
+
+          <input
+            type="text"
+            placeholder="Objectif d'économies"
+            value={costSavingsGoal}
+            onChange={(e) => setCostSavingsGoal(e.target.value)}
+            required
+            className="input-style"
+          />
+
+          <textarea
+            placeholder="Objectifs stratégiques"
+            value={strategicGoals}
+            onChange={(e) => setStrategicGoals(e.target.value)}
+            required
+            className="input-style"
+          />
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-3 px-6 bg-blue-900 text-white font-semibold rounded hover:bg-blue-800 transition"
+            className="w-full bg-[#0a2647] hover:bg-[#09325c] text-white py-3 px-4 rounded-lg font-semibold shadow-sm transition duration-150"
           >
-            {loading ? 'Génération...' : 'Générer le Rapport'}
+            Générer le Rapport
           </button>
         </form>
-
-        {/* Feedback */}
-        {message && <p className="mt-4 text-center text-sm text-gray-700">{message}</p>}
       </div>
-    </div>
+
+      <style jsx>{`
+        .input-style {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.5rem;
+          background-color: #f9fafb;
+          outline: none;
+          font-size: 1rem;
+        }
+        .input-style:focus {
+          border-color: #2563eb;
+          background-color: #fff;
+        }
+      `}</style>
+    </main>
   );
 }
-
-// Subcomponents for reuse
-function Input({ label, name, value, onChange }) {
-  return (
-    <div>
-      <label className="block font-medium mb-1">{label}</label>
-      <input
-        type="text"
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full border border-gray-300 rounded px-3 py-2"
-        required
-      />
-    </div>
-  );
-}
-
-function TextArea({ label, name, value, onChange }) {
-  return (
-    <div>
-      <label className="block font-medium mb-1">{label}</label>
-      <textarea
-        name={name}
-        value={value}
-        onChange={onChange}
-        rows={3}
-        className="w-full border border-gray-300 rounded px-3 py-2"
-        required
-      />
-    </div>
-  );
-}
-
-function Select({ label, name, value, onChange, options }) {
-  return (
-    <div>
-      <label className="block font-medium mb-1">{label}</label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full border border-gray-300 rounded px-3 py-2"
-        required
-      >
-        <option value="">-- Sélectionner --</option>
-        {options?.map((opt, idx) => (
-          <option key={idx} value={opt}>{opt}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-
