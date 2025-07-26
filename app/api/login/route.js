@@ -1,33 +1,86 @@
-import { NextResponse } from 'next/server'
+'use client';
 
-export async function POST(request) {
-  try {
-    const body = await request.json()
-    const { email, password } = body
+import { useState } from 'react';
 
-    console.debug('[API] Received login POST:', { email, password })
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Missing credentials' }, { status: 400 })
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    console.log("Sending login to /api/login", { email, password });
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      console.log("Login response status:", response.status);
+
+      const data = await response.json();
+      console.log("Login response body:", data);
+
+      if (response.ok) {
+        alert('Login successful!');
+        // Redirect or trigger success logic here
+      } else {
+        setError(data.error || 'Invalid credentials');
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError('Unexpected error during login');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      return NextResponse.json({ success: true }, { status: 200 })
-    }
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
+      <form onSubmit={handleSubmit} style={{ width: '300px', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>🔒 Sovereign Ops Login</h2>
 
-    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-  } catch (err) {
-    console.error('[API] Login failed:', err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
-  }
+        <label>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
+        />
+
+        <label>Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '0.6rem',
+            backgroundColor: '#001f3f',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px'
+          }}
+        >
+          {loading ? 'Logging in...' : 'Login'}
+        </button>
+
+        {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
+      </form>
+    </div>
+  );
 }
-
-// ✅ Add this below POST to handle accidental GETs
-export async function GET() {
-  return NextResponse.json({ message: 'Login API is live' }, { status: 200 })
-}
-
-
