@@ -1,86 +1,87 @@
-'use client';
+import { NextResponse } from 'next/server'
 
-import { useState } from 'react';
-
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    console.log("Sending login to /api/login", { email, password });
-
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      console.log("Login response status:", response.status);
-
-      const data = await response.json();
-      console.log("Login response body:", data);
-
-      if (response.ok) {
-        alert('Login successful!');
-        // Redirect or trigger success logic here
-      } else {
-        setError(data.error || 'Invalid credentials');
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError('Unexpected error during login');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '3rem' }}>
-      <form onSubmit={handleSubmit} style={{ width: '300px', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>🔒 Sovereign Ops Login</h2>
-
-        <label>Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
-        />
-
-        <label>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '0.6rem',
-            backgroundColor: '#001f3f',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px'
-          }}
-        >
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-
-        {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
-      </form>
-    </div>
-  );
+/**
+ * GET request — used for health checks or to verify route availability
+ */
+export async function GET() {
+  console.log("🟢 GET /api/login — route is active.")
+  
+  return NextResponse.json({
+    message: 'Login endpoint is active.',
+    timestamp: new Date().toISOString()
+  })
 }
+
+
+/**
+ * POST request — handles login form submission and validates credentials
+ */
+export async function POST(request) {
+  console.log("📨 POST /api/login triggered")
+
+  try {
+    const body = await request.json()
+
+    // Debug: Show raw body content
+    console.log("📦 Incoming request body:", body)
+
+    const { email, password } = body || {}
+
+    // Step 1: Validate email and password presence
+    if (!email || !password) {
+      console.warn("⚠️ Missing credentials — Email or password not provided.")
+      
+      return NextResponse.json(
+        { error: 'Missing credentials. Please enter both email and password.' },
+        { status: 400 }
+      )
+    }
+
+    // Step 2: Load admin credentials from environment
+    const validEmail = process.env.ADMIN_EMAIL || 'ktoppazzini@tlleanmanagement.com'
+    const validPassword = process.env.ADMIN_PASSWORD || 'test123'
+
+    console.log("🔐 Checking credentials against environment values...")
+    console.log(`📧 Submitted Email: ${email}`)
+    console.log(`📧 Expected Email: ${validEmail}`)
+
+    const emailMatch = email === validEmail
+    const passwordMatch = password === validPassword
+
+    if (emailMatch && passwordMatch) {
+      console.log("✅ Successful login")
+
+      // Optional: Set session token / auth cookie logic here
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          email,
+          loginTime: new Date().toISOString()
+        }
+      })
+    }
+
+    // Step 3: Invalid credentials
+    console.warn("❌ Invalid credentials provided")
+
+    return NextResponse.json(
+      { error: 'Invalid credentials. Please try again.' },
+      { status: 401 }
+    )
+
+  } catch (err) {
+    // Step 4: Handle unexpected errors
+    console.error("🔥 Error handling login request:", err)
+
+    return NextResponse.json(
+      {
+        error: 'Unexpected error occurred while processing login.',
+        details: err.message || 'No error message available',
+        timestamp: new Date().toISOString()
+      },
+      { status: 500 }
+    )
+  }
+}
+
