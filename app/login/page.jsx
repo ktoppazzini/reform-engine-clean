@@ -1,86 +1,84 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useState } from 'react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(false)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setSuccess(false)
-
-    console.debug('[Login Submit] Initiating POST with:', { email, password })
+    e.preventDefault();
+    console.log('🔧 Submitting login form...');
+    setStatus(null);
+    setLoading(true);
 
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password }),
-      })
+        body: JSON.stringify({ email, password })
+      });
 
-      const data = await res.json()
-      console.debug('[Login Submit] Response:', res.status, data)
+      console.log('📨 Response received:', res.status);
+
+      const data = await res.json();
+      console.log('📦 Data:', data);
 
       if (res.ok) {
-        setSuccess(true)
+        setStatus({ type: 'success', message: 'Login successful!' });
       } else {
-        setError(data.error || 'Login failed')
+        setStatus({ type: 'error', message: data.error || 'Login failed.' });
       }
     } catch (err) {
-      console.error('[Login Submit] Unexpected Error:', err)
-      setError('Unexpected error occurred')
+      console.error('🔥 Error during fetch:', err);
+      setStatus({ type: 'error', message: 'Unexpected error during login.' });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '400px', margin: 'auto' }}>
-      <h1>Login</h1>
-
+    <div style={{ maxWidth: 400, margin: 'auto', paddingTop: '5rem' }}>
+      <h2>🔐 Sovereign Ops Login</h2>
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Email:</label><br />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
+        <label>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
+        />
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label>Password:</label><br />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
+        <label>Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
+        />
 
         <button
           type="submit"
           disabled={loading}
-          style={{ padding: '0.5rem 1rem' }}
+          style={{ backgroundColor: '#001F3F', color: '#fff', padding: '0.5rem 1rem' }}
         >
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
 
-      {error && <p style={{ color: 'red', marginTop: '1rem' }}>{error}</p>}
-      {success && <p style={{ color: 'green', marginTop: '1rem' }}>Login successful!</p>}
-    </main>
-  )
+      {status && (
+        <p style={{ marginTop: '1rem', color: status.type === 'error' ? 'red' : 'green' }}>
+          {status.message}
+        </p>
+      )}
+    </div>
+  );
 }
+
 
