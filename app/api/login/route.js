@@ -1,5 +1,3 @@
-// /app/api/login/route.js
-
 import { NextResponse } from 'next/server'
 
 export async function POST(request) {
@@ -17,15 +15,19 @@ export async function POST(request) {
       email === process.env.ADMIN_EMAIL &&
       password === process.env.ADMIN_PASSWORD
     ) {
-      console.debug('[API] Login successful')
-      return NextResponse.json({ success: true })
+      return NextResponse.json({ success: true }, { status: 200 })
     }
 
-    console.debug('[API] Invalid credentials')
     return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   } catch (err) {
-    console.error('[API] Error in login POST handler:', err)
+    console.error('[API] Login failed:', err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
+
+// ✅ Add this below POST to handle accidental GETs
+export async function GET() {
+  return NextResponse.json({ message: 'Login API is live' }, { status: 200 })
+}
+
 
