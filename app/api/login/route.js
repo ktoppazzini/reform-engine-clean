@@ -1,87 +1,83 @@
-import { NextResponse } from 'next/server'
+'use client';
 
-/**
- * GET request — used for health checks or to verify route availability
- */
-export async function GET() {
-  console.log("🟢 GET /api/login — route is active.")
-  
-  return NextResponse.json({
-    message: 'Login endpoint is active.',
-    timestamp: new Date().toISOString()
-  })
-}
+import { useState } from 'react';
 
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-/**
- * POST request — handles login form submission and validates credentials
- */
-export async function POST(request) {
-  console.log("📨 POST /api/login triggered")
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setStatus(null);
+    setLoading(true);
 
-  try {
-    const body = await request.json()
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
 
-    // Debug: Show raw body content
-    console.log("📦 Incoming request body:", body)
+      const data = await res.json();
 
-    const { email, password } = body || {}
+      if (res.ok) {
+        console.log('✅ Login success:', data);
+        setStatus({ type: 'success', message: 'Login successful!' });
 
-    // Step 1: Validate email and password presence
-    if (!email || !password) {
-      console.warn("⚠️ Missing credentials — Email or password not provided.")
-      
-      return NextResponse.json(
-        { error: 'Missing credentials. Please enter both email and password.' },
-        { status: 400 }
-      )
+        // TODO: Navigate or store token/session
+      } else {
+        console.warn('⚠️ Login failed:', data);
+        setStatus({ type: 'error', message: data.error || 'Login failed.' });
+      }
+    } catch (err) {
+      console.error('🔥 Unexpected error:', err);
+      setStatus({ type: 'error', message: 'Network or server error occurred.' });
+    } finally {
+      setLoading(false);
     }
-
-    // Step 2: Load admin credentials from environment
-    const validEmail = process.env.ADMIN_EMAIL || 'ktoppazzini@tlleanmanagement.com'
-    const validPassword = process.env.ADMIN_PASSWORD || 'test123'
-
-    console.log("🔐 Checking credentials against environment values...")
-    console.log(`📧 Submitted Email: ${email}`)
-    console.log(`📧 Expected Email: ${validEmail}`)
-
-    const emailMatch = email === validEmail
-    const passwordMatch = password === validPassword
-
-    if (emailMatch && passwordMatch) {
-      console.log("✅ Successful login")
-
-      // Optional: Set session token / auth cookie logic here
-
-      return NextResponse.json({
-        success: true,
-        user: {
-          email,
-          loginTime: new Date().toISOString()
-        }
-      })
-    }
-
-    // Step 3: Invalid credentials
-    console.warn("❌ Invalid credentials provided")
-
-    return NextResponse.json(
-      { error: 'Invalid credentials. Please try again.' },
-      { status: 401 }
-    )
-
-  } catch (err) {
-    // Step 4: Handle unexpected errors
-    console.error("🔥 Error handling login request:", err)
-
-    return NextResponse.json(
-      {
-        error: 'Unexpected error occurred while processing login.',
-        details: err.message || 'No error message available',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
   }
+
+  return (
+    <main style={{ padding: '2rem', maxWidth: '400px', margin: 'auto' }}>
+      <h2>Login</h2>
+      <form onSubmit={handleSubmit}>
+        <label>Email:</label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+          style={{ display: 'block', width: '100%', marginBottom: '1rem' }}
+        />
+
+        <label>Password:</label>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+          style={{ display: 'block', width: '100%', marginBottom: '1rem' }}
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ padding: '0.5rem 1rem', backgroundColor: '#333', color: '#fff' }}
+        >
+          {loading ? 'Logging in...' : 'Login'}
+        </button>
+      </form>
+
+      {status && (
+        <p style={{ marginTop: '1rem', color: status.type === 'error' ? 'red' : 'green' }}>
+          {status.message}
+        </p>
+      )}
+    </main>
+  );
 }
 
