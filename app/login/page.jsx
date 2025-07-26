@@ -15,14 +15,19 @@ export default function LoginPage() {
     setError(null)
     setSuccess(false)
 
+    console.debug('[Login Submit] Initiating POST with:', { email, password })
+
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ email, password }),
       })
 
       const data = await res.json()
+      console.debug('[Login Submit] Response:', res.status, data)
 
       if (res.ok) {
         setSuccess(true)
@@ -30,7 +35,8 @@ export default function LoginPage() {
         setError(data.error || 'Login failed')
       }
     } catch (err) {
-      setError('An unexpected error occurred.')
+      console.error('[Login Submit] Unexpected Error:', err)
+      setError('Unexpected error occurred')
     } finally {
       setLoading(false)
     }
@@ -77,3 +83,4 @@ export default function LoginPage() {
     </main>
   )
 }
+
