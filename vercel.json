@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "http://app.tlleanmanagement.com/:path*",
+      "destination": "https://app.tlleanmanagement.com/:path*",
+      "permanent": true
+    }
+  ]
+}
