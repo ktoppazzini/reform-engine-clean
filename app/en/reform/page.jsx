@@ -1,154 +1,169 @@
 'use client';
-
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import Image from 'next/image';
+import Link from 'next/link';
 
-export default function ReformForm() {
-  const [organizationName, setOrganizationName] = useState('');
-  const [country, setCountry] = useState('');
-  const [companySize, setCompanySize] = useState('');
-  const [tier, setTier] = useState('');
-  const [timeFrame, setTimeFrame] = useState('');
-  const [desiredOutcome, setDesiredOutcome] = useState('');
-  const [costSavingsGoal, setCostSavingsGoal] = useState('');
-  const [strategicGoals, setStrategicGoals] = useState('');
+export default function ReformFormEN() {
+  const [form, setForm] = useState({
+    organization: '',
+    country: '',
+    size: '',
+    tier: '',
+    timeFrame: '',
+    outcome: '',
+    savings: '',
+    goals: '',
+  });
 
-  const [countries, setCountries] = useState([]);
-  const [companySizes, setCompanySizes] = useState([]);
-  const [tiers, setTiers] = useState([]);
-  const [timeFrames, setTimeFrames] = useState([]);
+  const [options, setOptions] = useState({
+    countries: [],
+    sizes: [],
+    tiers: [],
+    timeFrames: [],
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      const [countriesRes, sizesRes, tiersRes, timesRes] = await Promise.all([
-        axios.get('/api/countries'),
-        axios.get('/api/company-sizes'),
-        axios.get('/api/tiers'),
-        axios.get('/api/time-frames'),
-      ]);
-
-      setCountries(countriesRes.data);
-      setCompanySizes(sizesRes.data);
-      setTiers(tiersRes.data);
-      setTimeFrames(timesRes.data);
-    };
-
-    fetchData();
+    fetch('/api/options')
+      .then(res => res.json())
+      .then(data => {
+        setOptions({
+          countries: data.countries?.map(c => c.name) || [],
+          sizes: data.sizes?.map(s => s.name) || [],
+          tiers: data.tiers?.map(t => t.name) || [],
+          timeFrames: data.timeframes?.map(tf => tf.name) || [],
+        });
+      })
+      .catch(err => {
+        console.error('Dropdown fetch failed', err);
+        setMessage('⚠️ Failed to load options.');
+      });
   }, []);
+
+  const handleChange = (e) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage('');
 
-    await axios.post('/api/generate-pdf', {
-      organizationName,
-      country,
-      companySize,
-      tier,
-      timeFrame,
-      desiredOutcome,
-      costSavingsGoal,
-      strategicGoals,
-    });
+    try {
+      const res = await fetch('/api/generate-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    alert('Report submitted for generation.');
+      const result = await res.json();
+      if (res.ok) {
+        setMessage('✅ Report submitted successfully.');
+      } else {
+        setMessage(result.error || '❌ Something went wrong.');
+      }
+    } catch {
+      setMessage('❌ Submission error.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-xl w-full space-y-8 bg-white border border-gray-200 shadow-md rounded-xl p-10">
-        <div className="text-center">
-          <img src="/so-logo.png" alt="Sovereign Ops" className="mx-auto w-20 h-20 mb-4" />
-          <h2 className="text-3xl font-bold text-gray-900">Reform Report Generator</h2>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-10 px-4">
+      <div className="bg-white shadow-xl rounded-lg p-8 w-full max-w-2xl relative">
+        {/* Header with logo */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Image src="/secure.png" alt="Sovereign Ops" width={32} height={32} />
+            <h1 className="text-lg font-bold text-blue-900">Sovereign Ops™</h1>
+          </div>
+          <Link href="/fr/reform" className="text-blue-600 font-semibold hover:underline">FR</Link>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <input
-            type="text"
-            placeholder="Organization Name"
-            value={organizationName}
-            onChange={(e) => setOrganizationName(e.target.value)}
-            required
-            className="input-style"
-          />
 
-          <select value={country} onChange={(e) => setCountry(e.target.value)} required className="input-style">
-            <option value="">-- Select Country --</option>
-            {countries.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+        {/* Title */}
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Reform Report Generator</h2>
 
-          <select value={companySize} onChange={(e) => setCompanySize(e.target.value)} required className="input-style">
-            <option value="">-- Select Company Size --</option>
-            {companySizes.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input label="Organization Name" name="organization" value={form.organization} onChange={handleChange} />
 
-          <select value={tier} onChange={(e) => setTier(e.target.value)} required className="input-style">
-            <option value="">-- Select Tier --</option>
-            {tiers.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+          <Select label="Country" name="country" value={form.country} onChange={handleChange} options={options.countries} />
+          <Select label="Company Size" name="size" value={form.size} onChange={handleChange} options={options.sizes} />
+          <Select label="Tier" name="tier" value={form.tier} onChange={handleChange} options={options.tiers} />
+          <Select label="Time Frame" name="timeFrame" value={form.timeFrame} onChange={handleChange} options={options.timeFrames} />
 
-          <select value={timeFrame} onChange={(e) => setTimeFrame(e.target.value)} required className="input-style">
-            <option value="">-- Select Time Frame --</option>
-            {timeFrames.map((tf) => (
-              <option key={tf} value={tf}>{tf}</option>
-            ))}
-          </select>
-
-          <textarea
-            placeholder="Desired Outcome"
-            value={desiredOutcome}
-            onChange={(e) => setDesiredOutcome(e.target.value)}
-            required
-            className="input-style"
-          />
-
-          <input
-            type="text"
-            placeholder="Cost Savings Goal"
-            value={costSavingsGoal}
-            onChange={(e) => setCostSavingsGoal(e.target.value)}
-            required
-            className="input-style"
-          />
-
-          <textarea
-            placeholder="Strategic Goals"
-            value={strategicGoals}
-            onChange={(e) => setStrategicGoals(e.target.value)}
-            required
-            className="input-style"
-          />
+          <TextArea label="Desired Outcome" name="outcome" value={form.outcome} onChange={handleChange} />
+          <Input label="Cost Savings Goal" name="savings" value={form.savings} onChange={handleChange} />
+          <TextArea label="Strategic Goals" name="goals" value={form.goals} onChange={handleChange} />
 
           <button
             type="submit"
-            className="w-full bg-[#0a2647] hover:bg-[#09325c] text-white py-3 px-4 rounded-lg font-semibold shadow-sm transition duration-150"
+            disabled={loading}
+            className="w-full py-3 px-6 bg-blue-900 text-white font-semibold rounded hover:bg-blue-800 transition"
           >
-            Generate Report
+            {loading ? 'Generating...' : 'Generate Report'}
           </button>
         </form>
-      </div>
 
-      <style jsx>{`
-        .input-style {
-          width: 100%;
-          padding: 0.75rem 1rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.5rem;
-          background-color: #f9fafb;
-          outline: none;
-          font-size: 1rem;
-        }
-        .input-style:focus {
-          border-color: #2563eb;
-          background-color: #fff;
-        }
-      `}</style>
-    </main>
+        {message && <p className="mt-4 text-center text-sm text-gray-700">{message}</p>}
+      </div>
+    </div>
   );
 }
 
+// Reusable components
+function Input({ label, name, value, onChange }) {
+  return (
+    <div>
+      <label className="block font-medium mb-1">{label}</label>
+      <input
+        type="text"
+        name={name}
+        value={value}
+        onChange={onChange}
+        className="w-full border border-gray-300 rounded px-3 py-2"
+        required
+      />
+    </div>
+  );
+}
+
+function TextArea({ label, name, value, onChange }) {
+  return (
+    <div>
+      <label className="block font-medium mb-1">{label}</label>
+      <textarea
+        name={name}
+        value={value}
+        onChange={onChange}
+        rows={3}
+        className="w-full border border-gray-300 rounded px-3 py-2"
+        required
+      />
+    </div>
+  );
+}
+
+function Select({ label, name, value, onChange, options }) {
+  return (
+    <div>
+      <label className="block font-medium mb-1">{label}</label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        className="w-full border border-gray-300 rounded px-3 py-2"
+        required
+      >
+        <option value="">-- Select --</option>
+        {options?.map((opt, idx) => (
+          <option key={idx} value={opt}>{opt}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
