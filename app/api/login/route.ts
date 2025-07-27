@@ -16,17 +16,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // TEMPORARY: Simulate successful login for testing
+    // TEMP login response for testing
     return NextResponse.json(
       { message: 'Login success (test)' },
       { status: 200 }
     );
   } catch (err) {
-    console.error('❌ API Error:', err);
+    console.error("❌ API Error:", err);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
 }
+
 
