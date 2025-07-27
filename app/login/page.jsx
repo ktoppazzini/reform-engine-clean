@@ -1,88 +1,90 @@
 "use client";
+
 import { useState } from "react";
-import styles from "./login.module.css";
-import Image from "next/image";
-import secure from "/public/images/secure.png";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import styles from "./login.module.css"; // Make sure this file exists
+import secureImage from "@/public/images/secure.png"; // Ensure this path and file are correct
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [method, setMethod] = useState("email"); // or "sms"
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
 
     try {
-      console.log("🚀 Logging in..."); // Debug line
-
-      const response = await fetch("/api/login", {
+      const res = await fetch("/api/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error || "Login failed");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.error || "Login failed");
+        return;
       }
 
-      const result = await response.json();
-      console.log("✅ Login response:", result); // Debug line
-
-      if (result.mfa === "sms") {
-        localStorage.setItem("mfaMethod", "sms");
-        alert("Text sent.");
-        router.push(`/verify-mfa?email=${encodeURIComponent(email)}`);
-      } else if (result.mfa === "email") {
-        localStorage.setItem("mfaMethod", "email");
-        alert("Email sent.");
-        router.push(`/verify-mfa?email=${encodeURIComponent(email)}`);
-      } else {
-        throw new Error("Unexpected MFA method.");
-      }
+      // Dummy logic: navigate to dashboard or next step
+      router.push("/dashboard");
     } catch (err) {
-      console.error("❌ Login error:", err);
-      setError("Unexpected error during login.");
+      console.error("❌ Login fetch error:", err);
+      setError("An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className={styles.container}>
-      <form onSubmit={handleLogin} className={styles.form}>
-        <Image src={secure} alt="Secure" width={40} height={40} />
-        <h2 className={styles.title}>🔒 Sovereign Ops Login</h2>
-
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={styles.input}
+      <div className={styles.formWrapper}>
+        <Image
+          src={secureImage}
+          alt="Secure"
+          width={80}
+          height={80}
+          className={styles.logo}
         />
+        <h2 className={styles.title}>Login</h2>
 
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={styles.input}
-        />
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <label>Email:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-        <button type="submit" className={styles.button}>
-          Login
-        </button>
+          <label>Password:</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
-        {error && <p className={styles.error}>{error}</p>}
-      </form>
+          <label>Preferred Method:</label>
+          <select value={method} onChange={(e) => setMethod(e.target.value)}>
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+          </select>
+
+          <button type="submit" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
+
+          {error && <p className={styles.error}>{error}</p>}
+        </form>
+      </div>
     </div>
   );
 }
