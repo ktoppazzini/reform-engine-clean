@@ -1,79 +1,87 @@
-// File: pages/login.jsx
-
-import { useState } from "react";
+import React, { useState } from 'react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("");
+  const [emailValue, setEmail] = useState('');
+  const [passwordValue, setPassword] = useState('');
+  const [status, setStatus] = useState('');
 
   const loginUser = async (email, password) => {
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
+      const res = await fetch('/api/login', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
       });
 
-      const rawText = await res.text();
-      console.log("🧾 Raw response:", rawText);
+      const contentType = res.headers.get('Content-Type') || '';
+      const raw = await res.text();
 
+      console.log('📦 Raw response text:', raw);
+
+      if (!raw || !contentType.includes('application/json')) {
+        throw new Error('❌ No JSON response from server.');
+      }
+
+      let data;
       try {
-        const data = JSON.parse(rawText);
-        console.log("✅ Parsed data:", data);
+        data = JSON.parse(raw);
+      } catch (err) {
+        console.error('❌ JSON parse error:', err.message);
+        throw new Error('Server response was invalid JSON.');
+      }
 
-        if (res.ok && data.success) {
-          setStatus("✅ Login successful");
-          // Add redirect or token storage here
-        } else {
-          setStatus(`❌ ${data.error || "Login failed"}`);
-        }
-      } catch (parseErr) {
-        console.error("❌ JSON parse error:", parseErr);
-        setStatus("❌ Invalid response from server.");
+      if (res.ok) {
+        setStatus(`✅ ${data.message || 'Login successful'}`);
+      } else {
+        setStatus(`❌ ${data.error || 'Login failed'}`);
       }
     } catch (err) {
-      console.error("❌ Login fetch error:", err);
-      setStatus("❌ Failed to reach server.");
+      console.error('❌ Login error:', err);
+      setStatus(`❌ ${err.message}`);
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setStatus("⏳ Logging in...");
-    loginUser(email, password);
+    setStatus('⏳ Processing...');
+    loginUser(emailValue, passwordValue);
   };
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+    <div style={{ padding: '2rem' }}>
       <h2>Login</h2>
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Email:</label>
+        <div>
+          <label htmlFor="email">Email:</label>
           <input
+            id="email"
             type="email"
-            value={email}
+            value={emailValue}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={{ marginLeft: "1rem" }}
+            style={{ marginLeft: '0.5rem' }}
           />
         </div>
-        <div style={{ marginBottom: "1rem" }}>
-          <label>Password:</label>
+        <div style={{ marginTop: '1rem' }}>
+          <label htmlFor="password">Password:</label>
           <input
+            id="password"
             type="password"
-            value={password}
+            value={passwordValue}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ marginLeft: "1rem" }}
+            style={{ marginLeft: '0.5rem' }}
           />
         </div>
-        <button type="submit">Login</button>
+        <button style={{ marginTop: '1rem' }} type="submit">
+          Login
+        </button>
       </form>
-      <p style={{ marginTop: "1rem" }}>{status}</p>
+      <p style={{ marginTop: '1rem', color: 'darkred' }}>{status}</p>
     </div>
   );
 }
+
 
