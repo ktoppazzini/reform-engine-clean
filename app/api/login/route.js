@@ -1,28 +1,30 @@
-export const dynamic = 'force-dynamic';
+// File: /app/api/login/route.js
+export const dynamic = "force-dynamic";
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { email, password } = body || {};
+    const { email, password } = await req.json();
 
-    console.log("✅ Login POST received:", { email, hasPassword: !!password });
+    console.log("✅ Login attempt:", { email });
 
     if (!email || !password) {
-      return new Response(JSON.stringify({ error: 'Missing email or password' }), {
+      return new Response(JSON.stringify({ error: "Missing credentials" }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ message: 'Login success (test)' }), {
+    // TEMP: Simulate login success
+    return new Response(JSON.stringify({ message: "Login success" }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("❌ API Error:", err);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+    console.error("❌ Login error:", err);
+    return new Response(JSON.stringify({ error: "Server error" }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 }
+
