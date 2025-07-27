@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password } = body || {};
@@ -11,20 +11,20 @@ export async function POST(req: Request) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Missing email or password" },
+        { error: 'Missing email or password' },
         { status: 400 }
       );
     }
 
-    // ✅ Dummy success response (replace with real logic later)
+    // TEMPORARY: Simulate successful login for testing
     return NextResponse.json(
-      { message: "Login success (test)" },
+      { message: 'Login success (test)' },
       { status: 200 }
     );
   } catch (err) {
-    console.error("❌ API Error:", err);
+    console.error('❌ API Error:', err);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
