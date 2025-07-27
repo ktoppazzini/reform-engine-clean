@@ -1,3 +1,5 @@
+// File: pages/api/login.js
+
 import bcrypt from "bcrypt";
 import twilio from "twilio";
 
@@ -16,10 +18,9 @@ export default async function handler(req, res) {
 
   try {
     const { email, password } = req.body || {};
-    console.log("📥 Received:", { email, password: !!password });
+    console.log("📥 Received login request:", { email, hasPassword: !!password });
 
     if (!email || !password) {
-      console.warn("❗ Missing credentials");
       return res.status(400).json({ error: "Missing email or password" });
     }
 
@@ -38,14 +39,16 @@ export default async function handler(req, res) {
       },
     });
 
-    const text = await userRes.text();
+    const rawText = await userRes.text();
     let userData;
+
     try {
-      userData = JSON.parse(text);
+      userData = JSON.parse(rawText);
     } catch (parseErr) {
-      console.error("❌ JSON parse error:", parseErr);
-      console.error("Raw response text:", text);
-      return res.status(500).json({ error: "Failed to parse Airtable response" });
+      console.error("❌ Failed to parse Airtable response:", parseErr);
+      console.error("🧾 Raw response text:", rawText);
+      await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "Airtable parse error");
+      return res.status(500).json({ error: "Invalid response from user database" });
     }
 
     if (!userData.records || userData.records.length === 0) {
@@ -56,7 +59,6 @@ export default async function handler(req, res) {
     const record = userData.records[0];
     const fields = record.fields;
     const storedHash = fields["auth_token_key"];
-    console.log("🔐 Found hash?", !!storedHash);
 
     if (!storedHash) {
       await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "Missing password hash");
@@ -69,17 +71,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    // MFA Code Generation
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const phoneNumber = fields["Phone number"];
     const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
     if (!phoneNumber || !fromNumber) {
-      console.error("❌ Missing phone config");
-      return res.status(400).json({ error: "Missing phone configuration" });
+      console.error("❌ Missing phone config (Twilio)");
+      return res.status(400).json({ error: "Phone configuration missing" });
     }
 
-    console.log(`📲 Sending code ${verificationCode} to ${phoneNumber}`);
+    console.log(`📲 Sending MFA code ${verificationCode} to ${phoneNumber}`);
 
     await twilioClient.messages.create({
       body: `Your Sovereign Ops verification code is: ${verificationCode}`,
@@ -87,6 +90,7 @@ export default async function handler(req, res) {
       to: phoneNumber,
     });
 
+    // Store MFA code and expiry
     await fetch(`https://api.airtable.com/v0/${baseId}/${tableName}/${record.id}`, {
       method: "PATCH",
       headers: {
@@ -102,15 +106,17 @@ export default async function handler(req, res) {
     });
 
     await logAttempt(loginLogTable, baseId, airtableApiKey, email, true, "MFA code sent");
-    console.log("✅ Login and MFA success");
+
+    console.log("✅ Login validated. MFA code sent.");
     return res.status(200).json({ message: "MFA code sent" });
 
   } catch (err) {
-    console.error("🔥 Unexpected error:", err);
+    console.error("🔥 Unexpected error during login:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
 
+// Log to Airtable
 async function logAttempt(table, baseId, apiKey, email, success, notes) {
   try {
     const payload = {
@@ -131,8 +137,9 @@ async function logAttempt(table, baseId, apiKey, email, success, notes) {
       body: JSON.stringify(payload),
     });
 
-    console.log("📓 Login attempt logged:", notes);
+    console.log(`📓 Login attempt logged: [${success ? "✅" : "❌"}] ${notes}`);
   } catch (err) {
-    console.warn("⚠️ Log attempt failed:", err.message);
+    console.warn("⚠️ Failed to log login attempt:", err.message);
   }
 }
+
