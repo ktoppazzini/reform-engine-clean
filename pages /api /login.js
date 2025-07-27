@@ -7,23 +7,30 @@ const twilioClient = twilio(
 );
 
 export default async function handler(req, res) {
+  console.log("🔒 Login route hit:", req.method);
+
   if (req.method !== "POST") {
+    console.warn("⛔ Invalid method:", req.method);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Missing email or password" });
-  }
-
-  const airtableApiKey = process.env.AIRTABLE_API_KEY;
-  const baseId = process.env.AIRTABLE_BASE_ID;
-  const tableName = "Users";
-  const loginLogTable = "Login Attempts";
-
   try {
+    const { email, password } = req.body || {};
+    console.log("📥 Received:", { email, password: !!password });
+
+    if (!email || !password) {
+      console.warn("❗ Missing credentials");
+      return res.status(400).json({ error: "Missing email or password" });
+    }
+
+    const airtableApiKey = process.env.AIRTABLE_API_KEY;
+    const baseId = process.env.AIRTABLE_BASE_ID;
+    const tableName = "Users";
+    const loginLogTable = "Login Attempts";
+
     const userUrl = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula={Email}="${email}"`;
+    console.log("🔗 Fetching user from Airtable:", userUrl);
+
     const userRes = await fetch(userUrl, {
       headers: {
         Authorization: `Bearer ${airtableApiKey}`,
@@ -31,7 +38,15 @@ export default async function handler(req, res) {
       },
     });
 
-    const userData = await userRes.json();
+    const text = await userRes.text();
+    let userData;
+    try {
+      userData = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("❌ JSON parse error:", parseErr);
+      console.error("Raw response text:", text);
+      return res.status(500).json({ error: "Failed to parse Airtable response" });
+    }
 
     if (!userData.records || userData.records.length === 0) {
       await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "User not found");
@@ -41,6 +56,7 @@ export default async function handler(req, res) {
     const record = userData.records[0];
     const fields = record.fields;
     const storedHash = fields["auth_token_key"];
+    console.log("🔐 Found hash?", !!storedHash);
 
     if (!storedHash) {
       await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "Missing password hash");
@@ -53,16 +69,17 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Generate MFA Code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
-
+    const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const phoneNumber = fields["Phone number"];
     const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
     if (!phoneNumber || !fromNumber) {
+      console.error("❌ Missing phone config");
       return res.status(400).json({ error: "Missing phone configuration" });
     }
+
+    console.log(`📲 Sending code ${verificationCode} to ${phoneNumber}`);
 
     await twilioClient.messages.create({
       body: `Your Sovereign Ops verification code is: ${verificationCode}`,
@@ -85,27 +102,26 @@ export default async function handler(req, res) {
     });
 
     await logAttempt(loginLogTable, baseId, airtableApiKey, email, true, "MFA code sent");
-
+    console.log("✅ Login and MFA success");
     return res.status(200).json({ message: "MFA code sent" });
 
-  } catch (error) {
-    console.error("🔥 Login error:", error);
-    await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "Unexpected error");
+  } catch (err) {
+    console.error("🔥 Unexpected error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
 
 async function logAttempt(table, baseId, apiKey, email, success, notes) {
-  const payload = {
-    fields: {
-      "User Email": email,
-      "Status": success ? "Success" : "Fail",
-      "Notes": notes,
-      "Timestamp": new Date().toISOString(),
-    },
-  };
-
   try {
+    const payload = {
+      fields: {
+        "User Email": email,
+        "Status": success ? "Success" : "Fail",
+        "Notes": notes,
+        "Timestamp": new Date().toISOString(),
+      },
+    };
+
     await fetch(`https://api.airtable.com/v0/${baseId}/${table}`, {
       method: "POST",
       headers: {
@@ -114,9 +130,9 @@ async function logAttempt(table, baseId, apiKey, email, success, notes) {
       },
       body: JSON.stringify(payload),
     });
+
+    console.log("📓 Login attempt logged:", notes);
   } catch (err) {
-    console.warn("⚠️ Logging failed:", err.message);
+    console.warn("⚠️ Log attempt failed:", err.message);
   }
 }
-
-
