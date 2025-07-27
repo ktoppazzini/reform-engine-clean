@@ -1,134 +1,116 @@
 "use client";
+
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import styles from "./login.module.css"; // Make sure this CSS file exists
 import Image from "next/image";
+import secureImage from "@/public/images/secure.png"; // Make sure image is here
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [step, setStep] = useState("login");
   const [mfaCode, setMfaCode] = useState("");
-  const [step, setStep] = useState(1);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [method, setMethod] = useState("email"); // can be "email" or "sms"
 
   const handleLogin = async () => {
     setError("");
-    setMessage("");
-
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-
-    if (res.status === 200) {
-      const result = await fetch("/api/verify-mfa", {
+    try {
+      const res = await fetch("/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      }).then(res => res.json());
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (result.message) {
-        setMessage(result.message);
-        setStep(2);
+      const result = await res.json();
+      console.log("🔐 Login response:", result);
+
+      if (result.status === "mfa") {
+        setMethod(result.method || "email");
+        setStep("mfa");
+      } else if (result.status === "ok") {
+        window.location.href = "/dashboard"; // adjust as needed
       } else {
-        setError(result.error || "Failed to send verification code.");
+        setError(result.error || "Login failed.");
       }
-    } else {
-      setError(data.error || "Invalid email or password.");
+    } catch (e) {
+      console.error("❌ Login error:", e);
+      setError("Unexpected error during login.");
     }
   };
 
-  const handleMfaSubmit = async () => {
+  const handleVerifyMfa = async () => {
     setError("");
-    setMessage("");
+    try {
+      const res = await fetch("/api/verify-mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: mfaCode }),
+      });
 
-    const res = await fetch("/api/verify-code", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code: mfaCode }),
-    });
+      const result = await res.json();
+      console.log("🔐 MFA verification result:", result);
 
-    const data = await res.json();
-    console.log("📥 verify-code response", res.status, data);
-
-    if (res.status === 200) {
-      setMessage("✅ Verification successful. Redirecting...");
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1500);
-    } else {
-      setError(data.error || "Invalid verification code.");
+      if (result.status === "ok") {
+        window.location.href = "/dashboard";
+      } else {
+        setError(result.error || "Invalid code.");
+      }
+    } catch (e) {
+      console.error("❌ MFA verification error:", e);
+      setError("Error verifying code.");
     }
   };
 
   return (
-    <div style={{ padding: "2rem", textAlign: "center", maxWidth: "400px", margin: "auto" }}>
-      <div style={{ marginBottom: "1rem" }}>
-        <Image src="/logo.png" alt="Sovereign Ops Logo" width={150} height={150} />
-      </div>
-      <h2 style={{ marginTop: "1rem" }}>Secure Login</h2>
+    <div className={styles.container}>
+      <Image src={secureImage} alt="Secure Login" width={120} />
+      <h2>Secure Login</h2>
 
-      {step === 1 ? (
+      {step === "login" ? (
         <>
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
-          <button onClick={handleLogin} style={buttonStyle}>
+          <button onClick={handleLogin} className={styles.button}>
             Login
           </button>
         </>
       ) : (
         <>
+          <p className={styles.notice}>
+            {method === "sms"
+              ? "📱 Text sent. Please enter the code."
+              : "📧 Email sent. Please enter the code."}
+          </p>
           <input
             type="text"
-            placeholder="Enter your verification code"
+            placeholder="Enter MFA Code"
             value={mfaCode}
             onChange={(e) => setMfaCode(e.target.value)}
-            style={inputStyle}
+            className={styles.input}
           />
-          <button onClick={handleMfaSubmit} style={buttonStyle}>
+          <button onClick={handleVerifyMfa} className={styles.button}>
             Verify Code
           </button>
         </>
       )}
 
-      {message && <p style={{ color: "green", marginTop: "1rem" }}>{message}</p>}
-      {error && <p style={{ color: "red", marginTop: "1rem" }}>{error}</p>}
+      {error && <p className={styles.error}>❌ {error}</p>}
     </div>
   );
 }
 
-const inputStyle = {
-  display: "block",
-  width: "100%",
-  margin: "10px 0",
-  padding: "10px",
-  fontSize: "16px",
-  borderRadius: "5px",
-  border: "1px solid #ccc",
-};
-
-const buttonStyle = {
-  backgroundColor: "#0a2540",
-  color: "#fff",
-  padding: "10px 20px",
-  border: "none",
-  borderRadius: "5px",
-  cursor: "pointer",
-  fontWeight: "bold",
-};
