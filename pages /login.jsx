@@ -1,12 +1,11 @@
-// pages/login.jsx
+// File: pages/login.jsx
 
-import React, { useState } from "react";
-import { useRouter } from "next/router";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState("");
 
   const loginUser = async (email, password) => {
     try {
@@ -18,74 +17,63 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const text = await res.text(); // Handle invalid JSON
-      let data;
+      const rawText = await res.text();
+      console.log("🧾 Raw response:", rawText);
 
       try {
-        data = JSON.parse(text);
+        const data = JSON.parse(rawText);
+        console.log("✅ Parsed data:", data);
+
+        if (res.ok && data.success) {
+          setStatus("✅ Login successful");
+          // Add redirect or token storage here
+        } else {
+          setStatus(`❌ ${data.error || "Login failed"}`);
+        }
       } catch (parseErr) {
-        console.error("❌ Failed to parse response:", text);
-        throw new Error("Invalid response from server");
-      }
-
-      console.log("✅ Server Response:", data);
-
-      if (!res.ok) {
-        setError(data.error || "Login failed");
-        setMessage("");
-      } else {
-        setError("");
-        setMessage("MFA code sent. Please check your phone.");
-        // Optionally redirect to MFA page
-        // router.push("/verify");
+        console.error("❌ JSON parse error:", parseErr);
+        setStatus("❌ Invalid response from server.");
       }
     } catch (err) {
       console.error("❌ Login fetch error:", err);
-      setError("Something went wrong. Try again.");
-      setMessage("");
+      setStatus("❌ Failed to reach server.");
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const email = e.target.email.value;
-    const password = e.target.password.value;
-
-    console.log("📨 Attempting login with", email);
-    setError("");
-    setMessage("");
-
-    await loginUser(email, password);
+    setStatus("⏳ Logging in...");
+    loginUser(email, password);
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "400px", margin: "auto" }}>
-      <h2>🔐 Login to Sovereign Intelligence</h2>
+    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+      <h2>Login</h2>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: "1rem" }}>
+          <label>Email:</label>
           <input
             type="email"
-            name="email"
-            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
-            style={{ width: "100%", padding: "0.5rem" }}
+            style={{ marginLeft: "1rem" }}
           />
         </div>
         <div style={{ marginBottom: "1rem" }}>
+          <label>Password:</label>
           <input
             type="password"
-            name="password"
-            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ width: "100%", padding: "0.5rem" }}
+            style={{ marginLeft: "1rem" }}
           />
         </div>
-        <button type="submit" style={{ padding: "0.5rem 1rem" }}>
-          Log In
-        </button>
+        <button type="submit">Login</button>
       </form>
-      {error && <p style={{ color: "red", marginTop: "1rem" }}>❌ {error}</p>}
-      {message && <p style={{ color: "green", marginTop: "1rem" }}>✅ {message}</p>}
+      <p style={{ marginTop: "1rem" }}>{status}</p>
     </div>
   );
 }
+
