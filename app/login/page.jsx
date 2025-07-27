@@ -1,20 +1,18 @@
-// /app/login/page.jsx
+// File: /app/login/page.jsx
 "use client";
-
 import { useState } from "react";
-import styles from "./login.module.css";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setErrorMsg("");
 
     try {
       const res = await fetch("/api/login", {
@@ -25,60 +23,54 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log("🔁 Sent POST to /api/login");
-
-      const text = await res.text();
-      console.log("📥 Raw response text:", text);
-
-      const data = JSON.parse(text); // robust parsing even if not JSON
-
+      const data = await res.json();
       if (!res.ok) {
-        setError(data?.error || "Something went wrong.");
-      } else {
-        alert(data.message || "Login successful");
+        throw new Error(data?.error || "Login failed");
       }
+
+      console.log("✅ Login success:", data);
+      router.push("/en/reform"); // or redirect as needed
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError("Login failed. Please try again.");
-    } finally {
-      setLoading(false);
+      setErrorMsg(err.message);
     }
   };
 
   return (
-    <div className={styles.container}>
-      <Image src="/images/secure.png" alt="Secure Icon" width={120} height={120} />
-      <h2>Sign in to your account</h2>
-
-      <form onSubmit={handleLogin}>
-        <input
-          className={styles.input}
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          className={styles.input}
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        <button className={styles.button} type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
-
-      {error && <div className={styles.error}>{error}</div>}
-
-      <div className={styles.notice}>
-        Secure access powered by <strong>Sovereign Intelligence</strong>.
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-8 rounded-md shadow-md w-full max-w-md">
+        <div className="flex justify-center mb-6">
+          <Image src="/images/secure.png" alt="Logo" width={100} height={100} />
+        </div>
+        <h2 className="text-2xl font-bold text-center mb-6">Login</h2>
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full mb-4 p-2 border rounded"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full mb-4 p-2 border rounded"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {errorMsg && <p className="text-red-500 mb-4">{errorMsg}</p>}
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          >
+            Login
+          </button>
+        </form>
       </div>
     </div>
   );
 }
+
 
