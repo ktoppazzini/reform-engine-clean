@@ -1,11 +1,12 @@
 // app/api/login/route.js
+export const dynamic = "force-dynamic";
 
 export async function POST(req) {
   try {
     const body = await req.json();
     const { email, password } = body || {};
 
-    console.log("📨 Login POST received:", { email, hasPassword: !!password });
+    console.log("✅ Login POST received:", { email, hasPassword: !!password });
 
     if (!email || !password) {
       return new Response(
@@ -14,19 +15,17 @@ export async function POST(req) {
       );
     }
 
-    // TEMP: Just log and return dummy success for now
+    // TEMP: Just log and return dummy success
     return new Response(
       JSON.stringify({ message: "Login success (test)" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-
   } catch (err) {
-    console.error("🔥 Login route crashed:", err);
+    console.error("❌ API Error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal Server Error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }
-
 
