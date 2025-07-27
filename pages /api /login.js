@@ -22,6 +22,7 @@ export default async function handler(req, res) {
   const loginLogTable = "Login Attempts";
 
   try {
+    // 🔍 Lookup user by email
     const userUrl = `https://api.airtable.com/v0/${baseId}/${tableName}?filterByFormula={Email}="${email}"`;
     const userRes = await fetch(userUrl, {
       headers: {
@@ -38,7 +39,7 @@ export default async function handler(req, res) {
 
     const record = userData.records[0];
     const fields = record.fields;
-    const storedHash = fields["auth_token_key"];
+    const storedHash = fields["auth_token_key"]; // This is your 60-character bcrypt hash
 
     if (!storedHash) {
       await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "Missing password hash");
@@ -51,10 +52,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Generate MFA code and expiry
+    // 🔐 MFA code setup
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
-
     const phoneNumber = fields["Phone number"];
     const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
@@ -68,7 +68,6 @@ export default async function handler(req, res) {
     }
 
     console.log(`📲 Sending SMS to ${phoneNumber} from ${fromNumber}`);
-
     await twilioClient.messages.create({
       body: `Your Sovereign Ops verification code is: ${verificationCode}`,
       from: fromNumber,
@@ -77,7 +76,7 @@ export default async function handler(req, res) {
 
     console.log("✅ SMS sent successfully");
 
-    // Save code and expiry in Airtable
+    // 📝 Save code + expiry
     await fetch(`https://api.airtable.com/v0/${baseId}/${tableName}/${record.id}`, {
       method: "PATCH",
       headers: {
@@ -97,7 +96,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error("🔥 Login error:", err);
-    await logAttempt(loginLogTable, baseId, process.env.AIRTABLE_API_KEY, email, false, "Unexpected login error");
+    await logAttempt(loginLogTable, baseId, airtableApiKey, email, false, "Unexpected login error");
     return res.status(500).json({ error: "Internal server error" });
   }
 }
