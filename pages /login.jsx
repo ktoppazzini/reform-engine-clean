@@ -5,7 +5,6 @@ export default function LoginPage() {
   const [passwordValue, setPassword] = useState('');
   const [status, setStatus] = useState('');
 
-  // 🔐 This is loginUser() — runs when you submit the form
   const loginUser = async (email, password) => {
     try {
       const res = await fetch('/api/login', {
@@ -35,7 +34,6 @@ export default function LoginPage() {
 
       if (res.ok) {
         setStatus(`✅ ${data.message || 'Login successful'}`);
-        // Optional: redirect or move to next screen here
       } else {
         setStatus(`❌ ${data.error || 'Login failed'}`);
       }
@@ -85,5 +83,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-
