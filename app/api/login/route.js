@@ -19,7 +19,9 @@ export async function POST(req) {
     }
 
     // TODO: Replace with real authentication logic
-    if (email === "ktoppazzini@tlleanmanagement.com" && password === "123456") {
+    
+If (email === "ktoppazzini@tlleanmanagement.com" && password === "123456")
+ {
       return new Response(
         JSON.stringify({ message: "Login success" }),
         {
